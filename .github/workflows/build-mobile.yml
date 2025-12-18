@@ -100,11 +100,11 @@ jobs:
       
       - name: Deploy IPA to VPS
         run: |
+          mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-          scp -i ~/.ssh/deploy_key app-unsigned.ipa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/mobile_apps/
+          scp -i ~/.ssh/deploy_key app-unsigned.ipa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/mobile_apps/app-unsigned.ipa
       
       - name: Rename IPA with timestamp
         run: |
