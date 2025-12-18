@@ -66,27 +66,6 @@ jobs:
             cd /var/www/mobile_apps
             mv app-release.apk belanger-android-$(date +%Y%m%d-%H%M%S).apk
             ln -sf belanger-android-*.apk belanger-android-latest.apk
-      
-      - name: Deploy APK to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "build/app/outputs/flutter-apk/app-release.apk"
-          target: "/var/www/apps"
-          strip_components: 4
-      
-      - name: Rename APK on VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            mkdir -p /var/www/apps
-            mv /var/www/apps/app-release.apk /var/www/apps/belanger-stock-android.apk
-            chmod 644 /var/www/apps/belanger-stock-android.apk
 
   build-ios:
     runs-on: macos-latest
@@ -138,23 +117,3 @@ jobs:
             cd /var/www/mobile_apps
             mv app-unsigned.ipa belanger-ios-$(date +%Y%m%d-%H%M%S).ipa
             ln -sf belanger-ios-*.ipa belanger-ios-latest.ipa
-      
-      - name: Deploy IPA to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "app-unsigned.ipa"
-          target: "/var/www/apps"
-      
-      - name: Rename IPA on VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            mkdir -p /var/www/apps
-            mv /var/www/apps/app-unsigned.ipa /var/www/apps/belanger-stock-ios.ipa
-            chmod 644 /var/www/apps/belanger-stock-ios.ipa
