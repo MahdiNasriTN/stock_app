@@ -99,21 +99,17 @@ jobs:
           path: app-unsigned.ipa
       
       - name: Deploy IPA to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "app-unsigned.ipa"
-          target: "/var/www/mobile_apps/"
+        run: |
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          scp -i ~/.ssh/deploy_key app-unsigned.ipa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/mobile_apps/
       
       - name: Rename IPA with timestamp
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             cd /var/www/mobile_apps
             mv app-unsigned.ipa belanger-ios-$(date +%Y%m%d-%H%M%S).ipa
             ln -sf belanger-ios-*.ipa belanger-ios-latest.ipa
+          EOF
