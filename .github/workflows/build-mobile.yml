@@ -1,4 +1,4 @@
-name: Build Android & iOS Apps
+name: Build Android App
 
 on:
   push:
@@ -9,6 +9,9 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./project_app
     
     steps:
       - name: Checkout code
@@ -38,13 +41,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: project_app/build/app/outputs/flutter-apk/app-release.apk
       
       - name: Upload Android AAB
         uses: actions/upload-artifact@v4
         with:
           name: android-aab
-          path: build/app/outputs/bundle/release/app-release.aab
+          path: project_app/build/app/outputs/bundle/release/app-release.aab
       
       - name: Deploy APK to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -52,9 +55,9 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "build/app/outputs/flutter-apk/app-release.apk"
+          source: "project_app/build/app/outputs/flutter-apk/app-release.apk"
           target: "/var/www/mobile_apps/"
-          strip_components: 4
+          strip_components: 5
       
       - name: Rename APK with timestamp
         uses: appleboy/ssh-action@v1.0.3
@@ -64,53 +67,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd /var/www/mobile_apps
-            mv app-release.apk belanger-android-$(date +%Y%m%d-%H%M%S).apk
-            ln -sf belanger-android-*.apk belanger-android-latest.apk
-
-  build-ios:
-    runs-on: macos-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      
-      - name: Install dependencies
-        run: flutter pub get
-      
-      - name: Build iOS (No Codesign)
-        run: flutter build ios --release --no-codesign
-      
-      - name: Create IPA Archive
-        run: |
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r ../../../app-unsigned.ipa Payload
-      
-      - name: Upload iOS IPA (unsigned)
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa-unsigned
-          path: app-unsigned.ipa
-      
-      - name: Deploy IPA to VPS
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "mkdir -p /var/www/mobile_apps"
-          scp -i ~/.ssh/deploy_key app-unsigned.ipa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/mobile_apps/app-unsigned.ipa
-      
-      - name: Rename IPA with timestamp
-        run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            cd /var/www/mobile_apps
-            mv app-unsigned.ipa belanger-ios-$(date +%Y%m%d-%H%M%S).ipa
-            ln -sf belanger-ios-*.ipa belanger-ios-latest.ipa
-          EOF
+            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+            mv app-release.apk modatex-android-${TIMESTAMP}.apk
+            rm -f modatex-android-latest.apk
+            ln -s modatex-android-${TIMESTAMP}.apk modatex-android-latest.apk
