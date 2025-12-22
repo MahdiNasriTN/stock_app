@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
 import '../main.dart';
+import '../services/api_service.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({Key? key}) : super(key: key);
@@ -177,7 +178,7 @@ class _ProductCard extends StatelessWidget {
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                     child: Image.network(
-                      product.mainImage,
+                      product.getMainImageUrl(ApiService.baseUrl),
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.cover,

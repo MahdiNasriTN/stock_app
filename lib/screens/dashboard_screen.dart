@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
 import '../main.dart';
+import '../services/api_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -403,7 +404,7 @@ class _LowStockCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                product.mainImage,
+                product.getMainImageUrl(ApiService.baseUrl),
                 width: 50,
                 height: 50,
                 fit: BoxFit.cover,

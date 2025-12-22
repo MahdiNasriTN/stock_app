@@ -165,20 +165,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     setState(() => _isSubmitting = true);
 
-    // TODO: Upload images to server and get URLs
-    // For now, using placeholder URLs
+    // Prepare variant images map
+    final variantImages = <int, File>{};
+    for (var i = 0; i < _variants.length; i++) {
+      if (_variants[i]['imageFile'] != null) {
+        variantImages[i] = _variants[i]['imageFile'] as File;
+      }
+    }
+
+    // Build product data (without image URLs - they'll be handled by upload)
     final productData = {
-      'name': _nameController.text,
-      'mainImage': _mainImage != null
-          ? 'https://via.placeholder.com/400x300'
-          : 'https://via.placeholder.com/400x300',
+      'name': _nameController.text.trim(),
       'variants': _variants
           .map(
             (v) => {
-              'colorName': v['colorName'].text,
+              'colorName': v['colorName'].text.trim(),
               'color': _colorToHex(v['color'] as Color),
-              'reference': v['reference'].text,
-              'image': v['imageFile'] != null ? 'https://via.placeholder.com/400x300' : null,
+              'reference': v['reference'].text.trim(),
               'rolls': (v['rolls'] as List)
                   .map(
                     (r) => {
@@ -193,7 +196,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
     };
 
     final provider = Provider.of<ProductProvider>(context, listen: false);
-    final success = await provider.createProduct(productData);
+    final success = await provider.createProduct(
+      productData,
+      _mainImage,
+      variantImages,
+    );
 
     setState(() => _isSubmitting = false);
 

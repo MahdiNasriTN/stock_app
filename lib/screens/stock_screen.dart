@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
 import '../main.dart';
+import '../services/api_service.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({Key? key}) : super(key: key);
@@ -418,7 +419,7 @@ class _StockProductCard extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      product.mainImage,
+                      product.getMainImageUrl(ApiService.baseUrl),
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,

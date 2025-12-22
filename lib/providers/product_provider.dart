@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
@@ -69,9 +70,13 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createProduct(Map<String, dynamic> productData) async {
+  Future<bool> createProduct(
+    Map<String, dynamic> productData,
+    File? mainImage,
+    Map<int, File>? variantImages,
+  ) async {
     try {
-      await _apiService.createProduct(productData);
+      await _apiService.createProduct(productData, mainImage, variantImages);
       await fetchProducts();
       return true;
     } catch (e) {
@@ -81,9 +86,13 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> updateProduct(String productId, Map<String, dynamic> productData) async {
+  Future<bool> updateProduct(
+    String productId,
+    Map<String, dynamic> productData,
+    File? mainImage,
+  ) async {
     try {
-      await _apiService.updateProduct(productId, productData);
+      await _apiService.updateProduct(productId, productData, mainImage);
       await fetchProducts();
       return true;
     } catch (e) {
@@ -108,9 +117,27 @@ class ProductProvider with ChangeNotifier {
   Future<bool> addVariant(
     String productId,
     Map<String, dynamic> variantData,
+    File? variantImage,
   ) async {
     try {
-      await _apiService.addVariant(productId, variantData);
+      await _apiService.addVariant(productId, variantData, variantImage);
+      await fetchProducts();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateVariant(
+    String productId,
+    String variantId,
+    Map<String, dynamic> variantData,
+    File? variantImage,
+  ) async {
+    try {
+      await _apiService.updateVariant(productId, variantId, variantData, variantImage);
       await fetchProducts();
       return true;
     } catch (e) {

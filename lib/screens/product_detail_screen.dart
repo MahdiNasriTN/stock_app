@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
 import '../main.dart';
+import 'edit_product_screen.dart';
+import '../services/api_service.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -19,11 +23,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Product? _product;
   bool _loading = true;
   Set<String> _expandedVariants = {};
+  late PageController _imagePageController;
+  int _currentImageIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _imagePageController = PageController();
     _loadProduct();
+  }
+
+  @override
+  void dispose() {
+    _imagePageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProduct() async {
@@ -126,75 +139,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  void _showEditProductDialog() {
-    final nameController = TextEditingController(text: _product!.name);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: ModatexColors.surface,
-        title: const Text(
-          'Modifier le produit',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: 'Nom du produit',
-                prefixIcon: Icon(Icons.edit_outlined, color: ModatexColors.accent),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler', style: TextStyle(color: ModatexColors.accent)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Le nom ne peut pas être vide'),
-                    backgroundColor: ModatexColors.error,
-                  ),
-                );
-                return;
-              }
-
-              Navigator.pop(context);
-              final provider = Provider.of<ProductProvider>(context, listen: false);
-              final success = await provider.updateProduct(
-                widget.productId,
-                {'name': nameController.text},
-              );
-
-              if (success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Produit modifié avec succès'),
-                    backgroundColor: ModatexColors.success,
-                  ),
-                );
-                _loadProduct();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Échec de la modification'),
-                    backgroundColor: ModatexColors.error,
-                  ),
-                );
-              }
-            },
-            child: const Text('Enregistrer'),
-          ),
-        ],
+  void _showEditProductDialog() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProductScreen(product: _product!),
       ),
     );
+
+    // If edit was successful, reload the product
+    if (result == true) {
+      _loadProduct();
+    }
   }
 
   void _confirmDeleteProduct() {
@@ -373,6 +329,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final colorNameController = TextEditingController();
     Color selectedColor = const Color(0xFF1A1A1A);
     final referenceController = TextEditingController();
+    File? variantImage;
+    final ImagePicker picker = ImagePicker();
 
     showDialog(
       context: context,
@@ -392,6 +350,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   decoration: InputDecoration(
                     labelText: 'Nom de la couleur',
                     prefixIcon: Icon(Icons.label_outline, color: ModatexColors.accent),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () async {
+                    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                    if (image != null) {
+                      setDialogState(() => variantImage = File(image.path));
+                    }
+                  },
+                  child: Container(
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: ModatexColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: ModatexColors.divider),
+                    ),
+                    child: variantImage != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(variantImage!, fit: BoxFit.cover),
+                          )
+                        : Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate, color: ModatexColors.accent, size: 32),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Ajouter une image',
+                                  style: TextStyle(color: ModatexColors.accent, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -499,11 +492,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   context,
                   listen: false,
                 );
-                final success = await provider.addVariant(widget.productId, {
-                  'colorName': colorNameController.text,
-                  'color': colorHex,
-                  'reference': referenceController.text,
-                });
+                final success = await provider.addVariant(
+                  widget.productId,
+                  {
+                    'colorName': colorNameController.text,
+                    'color': colorHex,
+                    'reference': referenceController.text,
+                  },
+                  variantImage,
+                );
 
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -528,6 +525,310 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
       ),
     );
+  }
+
+  void _showEditVariantDialog(Variant variant) async {
+    final colorNameController = TextEditingController(text: variant.colorName);
+    Color selectedColor = _parseColor(variant.color);
+    final referenceController = TextEditingController(text: variant.reference);
+    File? variantImage;
+    final ImagePicker picker = ImagePicker();
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: ModatexColors.surface,
+          title: const Text(
+            'Modifier la couleur',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: colorNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Nom de la couleur',
+                    prefixIcon: Icon(Icons.label_outline, color: ModatexColors.accent),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () async {
+                    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                    if (image != null) {
+                      setDialogState(() => variantImage = File(image.path));
+                    }
+                  },
+                  child: Container(
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: ModatexColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: ModatexColors.divider),
+                    ),
+                    child: variantImage != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(variantImage!, fit: BoxFit.cover),
+                          )
+                        : variant.image != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  variant.getImageUrl(ApiService.baseUrl) ?? '',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Center(
+                                      child: Icon(Icons.add_photo_alternate, color: ModatexColors.accent),
+                                    );
+                                  },
+                                ),
+                              )
+                            : Center(
+                                child: Icon(Icons.add_photo_alternate, color: ModatexColors.accent),
+                              ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: ModatexColors.surface,
+                        title: const Text('Choisir une couleur'),
+                        content: SingleChildScrollView(
+                          child: ColorPicker(
+                            pickerColor: selectedColor,
+                            onColorChanged: (color) {
+                              setDialogState(() => selectedColor = color);
+                            },
+                            pickerAreaHeightPercent: 0.8,
+                          ),
+                        ),
+                        actions: [
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Valider'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: ModatexColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: ModatexColors.divider),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: selectedColor,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: ModatexColors.divider),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Couleur sélectionnée',
+                                style: TextStyle(fontSize: 12, color: ModatexColors.accent),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.color_lens_outlined, color: ModatexColors.accent),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: referenceController,
+                  decoration: InputDecoration(
+                    labelText: 'Référence',
+                    prefixIcon: Icon(Icons.tag, color: ModatexColors.accent),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Annuler', style: TextStyle(color: ModatexColors.accent)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (colorNameController.text.isEmpty || referenceController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Veuillez remplir tous les champs'),
+                      backgroundColor: ModatexColors.error,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context, {
+                  'colorName': colorNameController.text,
+                  'color': '#${selectedColor.value.toRadixString(16).substring(2)}',
+                  'reference': referenceController.text,
+                  'image': variantImage,
+                });
+              },
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      final success = await provider.updateVariant(
+        widget.productId,
+        variant.id,
+        {
+          'colorName': result['colorName'],
+          'color': result['color'],
+          'reference': result['reference'],
+        },
+        result['image'],
+      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Couleur modifiée avec succès'),
+            backgroundColor: ModatexColors.success,
+          ),
+        );
+        _loadProduct();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Échec de la modification'),
+            backgroundColor: ModatexColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showEditRollDialog(Variant variant, Roll roll) async {
+    String location = roll.location;
+    final lengthController = TextEditingController(text: roll.length.toString());
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: ModatexColors.surface,
+          title: const Text(
+            'Modifier le rouleau',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: location,
+                decoration: InputDecoration(
+                  labelText: 'Emplacement',
+                  prefixIcon: Icon(Icons.location_on_outlined, color: ModatexColors.accent),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'warehouse', child: Text('Entrepôt')),
+                  DropdownMenuItem(value: 'magasin', child: Text('Magasin')),
+                ],
+                onChanged: (value) {
+                  setDialogState(() => location = value!);
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: lengthController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Longueur (mètres)',
+                  prefixIcon: Icon(Icons.straighten, color: ModatexColors.accent),
+                  suffixText: 'm',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Annuler', style: TextStyle(color: ModatexColors.accent)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final length = double.tryParse(lengthController.text);
+                if (length == null || length <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Longueur invalide'),
+                      backgroundColor: ModatexColors.error,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context, {
+                  'location': location,
+                  'length': length,
+                });
+              },
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      final success = await provider.updateRoll(
+        productId: widget.productId,
+        variantId: variant.id,
+        rollId: roll.id,
+        location: result['location'],
+        length: result['length'],
+      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Rouleau modifié avec succès'),
+            backgroundColor: ModatexColors.success,
+          ),
+        );
+        _loadProduct();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Échec de la modification'),
+            backgroundColor: ModatexColors.error,
+          ),
+        );
+      }
+    }
   }
 
   Color _parseColor(String colorStr) {
@@ -585,21 +886,78 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    _product!.mainImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: ModatexColors.secondary,
-                        child: Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 80,
-                            color: ModatexColors.accent,
-                          ),
-                        ),
-                      );
+                  // Image Gallery with PageView
+                  PageView(
+                    controller: _imagePageController,
+                    onPageChanged: (index) {
+                      setState(() => _currentImageIndex = index);
                     },
+                    children: [
+                      // Main product image
+                      Image.network(
+                        _product!.getMainImageUrl(ApiService.baseUrl),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: ModatexColors.secondary,
+                            child: Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: 80,
+                                color: ModatexColors.accent,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      // Variant images
+                      ..._product!.variants
+                          .where((v) => v.image != null && v.image!.isNotEmpty)
+                          .map((variant) {
+                        final imageUrl = variant.getImageUrl(ApiService.baseUrl);
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.network(
+                              imageUrl ?? '',
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: ModatexColors.secondary,
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.image_outlined,
+                                      size: 80,
+                                      color: ModatexColors.accent,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            // Variant label
+                            Positioned(
+                              bottom: 16,
+                              left: 16,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  variant.colorName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ],
                   ),
                   Container(
                     decoration: BoxDecoration(
@@ -613,6 +971,100 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
                     ),
                   ),
+                  // Left navigation arrow
+                  if (_currentImageIndex > 0)
+                    Positioned(
+                      left: 16,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              _imagePageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                Icons.chevron_left,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Right navigation arrow
+                  if (_currentImageIndex < _product!.variants.where((v) => v.image != null && v.image!.isNotEmpty).length)
+                    Positioned(
+                      right: 16,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              _imagePageController.nextPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                Icons.chevron_right,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Page indicator
+                  if (_product!.variants.where((v) => v.image != null && v.image!.isNotEmpty).isNotEmpty)
+                    Positioned(
+                      top: 60,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.image, color: Colors.white, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${_currentImageIndex + 1}/${_product!.variants.where((v) => v.image != null && v.image!.isNotEmpty).length + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -776,6 +1228,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         onToggleExpand: () =>
                             _toggleVariantExpansion(variant.id),
                         onAddRoll: () => _showAddRollDialog(variant),
+                        onEdit: () => _showEditVariantDialog(variant),
+                        onEditRoll: (roll) => _showEditRollDialog(variant, roll),
                         onDeleteRoll: (rollId) async {
                           final confirm = await showDialog<bool>(
                             context: context,
@@ -944,6 +1398,8 @@ class _VariantCard extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggleExpand;
   final VoidCallback onAddRoll;
+  final VoidCallback onEdit;
+  final Function(Roll) onEditRoll;
   final Function(String) onDeleteRoll;
   final VoidCallback onDelete;
 
@@ -953,6 +1409,8 @@ class _VariantCard extends StatelessWidget {
     required this.isExpanded,
     required this.onToggleExpand,
     required this.onAddRoll,
+    required this.onEdit,
+    required this.onEditRoll,
     required this.onDeleteRoll,
     required this.onDelete,
   }) : super(key: key);
@@ -1093,6 +1551,33 @@ class _VariantCard extends StatelessWidget {
                       Row(
                         children: [
                           GestureDetector(
+                            onTap: onEdit,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: ModatexColors.surface,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: ModatexColors.divider),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit_outlined, size: 16, color: ModatexColors.accent),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Modifier',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: ModatexColors.accent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
                             onTap: onAddRoll,
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1212,6 +1697,18 @@ class _VariantCard extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
                                 color: ModatexColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => onEditRoll(roll),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  color: ModatexColors.accent,
+                                  size: 18,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),

@@ -19,6 +19,16 @@ class Product {
     required this.updatedAt,
   });
 
+  // Helper to get full image URL
+  String getMainImageUrl(String baseUrl) {
+    if (mainImage.startsWith('http://') || mainImage.startsWith('https://')) {
+      return mainImage;
+    }
+    // Remove /api/v1 from baseUrl and add the image path
+    final serverUrl = baseUrl.replaceAll('/api/v1', '');
+    return '$serverUrl$mainImage';
+  }
+
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       id: (json['_id'] ?? '').toString(),
@@ -132,6 +142,17 @@ class Variant {
     required this.rolls,
     required this.totalStock,
   });
+
+  // Helper to get full image URL
+  String? getImageUrl(String baseUrl) {
+    if (image == null) return null;
+    if (image!.startsWith('http://') || image!.startsWith('https://')) {
+      return image;
+    }
+    // Remove /api/v1 from baseUrl and add the image path
+    final serverUrl = baseUrl.replaceAll('/api/v1', '');
+    return '$serverUrl$image';
+  }
 
   factory Variant.fromJson(Map<String, dynamic> json) {
     return Variant(

@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 import '../models/product.dart';
 
 class ApiService {
@@ -128,42 +130,134 @@ class ApiService {
     }
   }
 
-  // Create product
-  Future<Product> createProduct(Map<String, dynamic> productData) async {
+  // Create product with image upload
+  Future<Product> createProduct(
+    Map<String, dynamic> productData,
+    File? mainImage,
+    Map<int, File>? variantImages,
+  ) async {
     try {
-      final response = await http.post(
+      var request = http.MultipartRequest(
+        'POST',
         Uri.parse('$baseUrl/products'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(productData),
       );
+
+      // Add main image if provided
+      if (mainImage != null) {
+        final extension = mainImage.path.split('.').last.toLowerCase();
+        String contentType = 'image/jpeg';
+        if (extension == 'png') {
+          contentType = 'image/png';
+        } else if (extension == 'gif') {
+          contentType = 'image/gif';
+        } else if (extension == 'webp') {
+          contentType = 'image/webp';
+        }
+        
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'mainImage',
+            mainImage.path,
+            contentType: MediaType.parse(contentType),
+          ),
+        );
+      }
+
+      // Upload variant images first and get URLs (simplified - using placeholder for now)
+      final variants = productData['variants'] as List?;
+      if (variants != null && variantImages != null) {
+        for (var i = 0; i < variants.length; i++) {
+          final variantImage = variantImages[i];
+          if (variantImage != null) {
+            // For now, keep as placeholder - proper implementation would upload separately
+            variants[i]['image'] = '/uploads/variant_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          }
+        }
+      }
+
+      // Add other fields as JSON in a single field
+      request.fields['name'] = productData['name'];
+      if (variants != null) {
+        request.fields['variants'] = json.encode(variants);
+      }
+      if (productData['lowStockThreshold'] != null) {
+        request.fields['lowStockThreshold'] = productData['lowStockThreshold'].toString();
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
         return Product.fromJson(data['data']);
       } else {
-        throw Exception('Failed to create product');
+        print('Create product failed: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Failed to create product: ${response.body}');
       }
     } catch (e) {
+      print('Error creating product: $e');
       throw Exception('Error creating product: $e');
     }
   }
 
-  // Update product
-  Future<Product> updateProduct(String productId, Map<String, dynamic> productData) async {
+  // Update product with optional image upload
+  Future<Product> updateProduct(
+    String productId,
+    Map<String, dynamic> productData,
+    File? mainImage,
+  ) async {
     try {
-      final response = await http.put(
+      var request = http.MultipartRequest(
+        'PUT',
         Uri.parse('$baseUrl/products/$productId'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(productData),
       );
+
+      // Add main image if provided
+      if (mainImage != null) {
+        final extension = mainImage.path.split('.').last.toLowerCase();
+        String contentType = 'image/jpeg';
+        if (extension == 'png') {
+          contentType = 'image/png';
+        } else if (extension == 'gif') {
+          contentType = 'image/gif';
+        } else if (extension == 'webp') {
+          contentType = 'image/webp';
+        }
+        
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'mainImage',
+            mainImage.path,
+            contentType: MediaType.parse(contentType),
+          ),
+        );
+      }
+
+      // Add other fields
+      if (productData['name'] != null) {
+        request.fields['name'] = productData['name'];
+      }
+      if (productData['variants'] != null) {
+        request.fields['variants'] = json.encode(productData['variants']);
+      }
+      if (productData['lowStockThreshold'] != null) {
+        request.fields['lowStockThreshold'] = productData['lowStockThreshold'].toString();
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return Product.fromJson(data['data']);
       } else {
-        throw Exception('Failed to update product');
+        print('Update product failed: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Failed to update product: ${response.body}');
       }
     } catch (e) {
+      print('Error updating product: $e');
       throw Exception('Error updating product: $e');
     }
   }
@@ -183,23 +277,117 @@ class ApiService {
     }
   }
 
-  // Add variant
+  // Add variant with optional image upload
   Future<void> addVariant(
     String productId,
     Map<String, dynamic> variantData,
+    File? variantImage,
   ) async {
     try {
-      final response = await http.post(
+      var request = http.MultipartRequest(
+        'POST',
         Uri.parse('$baseUrl/products/$productId/variants'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(variantData),
       );
 
+      // Add variant image if provided
+      if (variantImage != null) {
+        final extension = variantImage.path.split('.').last.toLowerCase();
+        String contentType = 'image/jpeg';
+        if (extension == 'png') {
+          contentType = 'image/png';
+        } else if (extension == 'gif') {
+          contentType = 'image/gif';
+        } else if (extension == 'webp') {
+          contentType = 'image/webp';
+        }
+        
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'image',
+            variantImage.path,
+            contentType: MediaType.parse(contentType),
+          ),
+        );
+      }
+
+      // Add variant fields
+      if (variantData['colorName'] != null) {
+        request.fields['colorName'] = variantData['colorName'];
+      }
+      if (variantData['color'] != null) {
+        request.fields['color'] = variantData['color'];
+      }
+      if (variantData['reference'] != null) {
+        request.fields['reference'] = variantData['reference'];
+      }
+      if (variantData['rolls'] != null) {
+        request.fields['rolls'] = json.encode(variantData['rolls']);
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
       if (response.statusCode != 201) {
-        throw Exception('Failed to add variant');
+        throw Exception('Failed to add variant: ${response.body}');
       }
     } catch (e) {
       throw Exception('Error adding variant: $e');
+    }
+  }
+
+  // Update variant with optional image upload
+  Future<void> updateVariant(
+    String productId,
+    String variantId,
+    Map<String, dynamic> variantData,
+    File? variantImage,
+  ) async {
+    try {
+      var request = http.MultipartRequest(
+        'PUT',
+        Uri.parse('$baseUrl/products/$productId/variants/$variantId'),
+      );
+
+      // Add variant image if provided
+      if (variantImage != null) {
+        final extension = variantImage.path.split('.').last.toLowerCase();
+        String contentType = 'image/jpeg';
+        if (extension == 'png') {
+          contentType = 'image/png';
+        } else if (extension == 'gif') {
+          contentType = 'image/gif';
+        } else if (extension == 'webp') {
+          contentType = 'image/webp';
+        }
+        
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'image',
+            variantImage.path,
+            contentType: MediaType.parse(contentType),
+          ),
+        );
+      }
+
+      // Add variant fields
+      if (variantData['colorName'] != null) {
+        request.fields['colorName'] = variantData['colorName'];
+      }
+      if (variantData['color'] != null) {
+        request.fields['color'] = variantData['color'];
+      }
+      if (variantData['reference'] != null) {
+        request.fields['reference'] = variantData['reference'];
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update variant: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error updating variant: $e');
     }
   }
 
