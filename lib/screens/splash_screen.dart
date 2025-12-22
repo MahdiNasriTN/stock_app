@@ -205,7 +205,7 @@ class _MainScreenState extends State<MainScreen> {
                 _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Accueil'),
                 _buildNavItem(1, Icons.inventory_2_outlined, Icons.inventory_2, 'Produits'),
                 _buildNavItem(2, Icons.warehouse_outlined, Icons.warehouse, 'Stock'),
-                _buildNavItem(3, Icons.settings_outlined, Icons.settings, 'Réglages'),
+                //_buildNavItem(3, Icons.settings_outlined, Icons.settings, 'Réglages'),
               ],
             ),
           ),
