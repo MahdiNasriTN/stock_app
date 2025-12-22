@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
+import '../main.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -30,18 +31,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0,
-        backgroundColor: const Color(0xFF9333EA),
-      ),
+      backgroundColor: ModatexColors.background,
       body: RefreshIndicator(
         onRefresh: _loadData,
+        color: ModatexColors.primary,
         child: Consumer<ProductProvider>(
           builder: (context, provider, child) {
             if (provider.loading && provider.stats == null) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: ModatexColors.primary,
+                ),
+              );
             }
 
             final stats = provider.stats;
@@ -50,138 +51,193 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 .where((p) => p.totalStock <= p.lowStockThreshold)
                 .toList();
 
-            return SingleChildScrollView(
+            return CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Stats Cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          title: 'Total Products',
-                          value: '${stats?.totalProducts ?? 0}',
-                          icon: Icons.inventory_2,
-                          color: Colors.blue,
+              slivers: [
+                // Custom Header
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+                    decoration: BoxDecoration(
+                      color: ModatexColors.primary,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'MODATEX',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white.withOpacity(0.7),
+                                    letterSpacing: 3,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Tableau de bord',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w300,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'M',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w300,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _StatCard(
-                          title: 'Total Stock',
-                          value: '${stats?.totalStock ?? 0}',
-                          icon: Icons.warehouse,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _StatCard(
-                    title: 'Low Stock Alerts',
-                    value: '${stats?.lowStockCount ?? 0}',
-                    icon: Icons.warning_amber,
-                    color: Colors.orange,
-                    fullWidth: true,
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Quick Actions
-                  Text(
-                    'Quick Actions',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _QuickActionButton(
-                          label: 'Add Product',
-                          icon: Icons.add_box,
-                          color: const Color(0xFF9333EA),
-                          onTap: () {
-                            Navigator.pushNamed(context, '/add-product');
-                          },
+                ),
+
+                // Stats Section
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Stats Grid
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                title: 'Produits',
+                                value: '${stats?.totalProducts ?? 0}',
+                                icon: Icons.inventory_2_outlined,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatCard(
+                                title: 'Stock Total',
+                                value: '${stats?.totalStock ?? 0} m',
+                                icon: Icons.straighten_outlined,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _QuickActionButton(
-                          label: 'View Stock',
-                          icon: Icons.inventory,
-                          color: Colors.teal,
-                          onTap: () {
-                            Navigator.pushNamed(context, '/stock');
-                          },
+                        const SizedBox(height: 12),
+                        _StatCard(
+                          title: 'Alertes Stock Bas',
+                          value: '${stats?.lowStockCount ?? 0}',
+                          icon: Icons.warning_amber_outlined,
+                          isWarning: (stats?.lowStockCount ?? 0) > 0,
+                          fullWidth: true,
                         ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Category Breakdown
-                  Text(
-                    'Category Breakdown',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (stats?.categoryBreakdown != null && stats!.categoryBreakdown.isNotEmpty)
-                    ...stats.categoryBreakdown.map((category) {
-                      return _CategoryCard(
-                        category: category.category,
-                        count: category.count,
-                      );
-                    }).toList()
-                  else
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24.0),
-                        child: Text('No categories available'),
-                      ),
-                    ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Low Stock Alerts
-                  Text(
-                    'Low Stock Alerts',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (lowStockProducts.isNotEmpty)
-                    ...lowStockProducts.map((product) {
-                      return _LowStockCard(product: product);
-                    }).toList()
-                  else
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Center(
-                          child: Column(
-                            children: const [
-                              Icon(Icons.check_circle, size: 48, color: Colors.green),
-                              SizedBox(height: 8),
-                              Text('All products are well stocked!'),
-                            ],
+
+                        const SizedBox(height: 32),
+
+                        // Quick Actions
+                        _buildSectionTitle('Actions rapides'),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _QuickActionButton(
+                                label: 'Nouveau\nProduit',
+                                icon: Icons.add_rounded,
+                                onTap: () {
+                                  Navigator.pushNamed(context, '/add-product');
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _QuickActionButton(
+                                label: 'Gérer\nStock',
+                                icon: Icons.inventory_outlined,
+                                onTap: () {
+                                  Navigator.pushNamed(context, '/stock');
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Low Stock Alerts
+                        _buildSectionTitle('Alertes de stock'),
+                        const SizedBox(height: 16),
+                        if (lowStockProducts.isNotEmpty)
+                          ...lowStockProducts.map((product) {
+                            return _LowStockCard(product: product);
+                          })
+                        else
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: ModatexColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.check_circle_outline,
+                                  color: ModatexColors.success,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Tous les stocks sont suffisants',
+                                  style: TextStyle(
+                                    color: ModatexColors.success,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
+
+                        const SizedBox(height: 40),
+                      ],
                     ),
-                ],
-              ),
+                  ),
+                ),
+              ],
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title.toUpperCase(),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: ModatexColors.accent,
+        letterSpacing: 1.5,
       ),
     );
   }
@@ -191,52 +247,77 @@ class _StatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-  final Color color;
   final bool fullWidth;
+  final bool isWarning;
 
   const _StatCard({
     Key? key,
     required this.title,
     required this.value,
     required this.icon,
-    required this.color,
     this.fullWidth = false,
+    this.isWarning = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ModatexColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isWarning
+                  ? ModatexColors.warning.withOpacity(0.1)
+                  : ModatexColors.background,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: isWarning ? ModatexColors.warning : ModatexColors.primary,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: color, size: 32),
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: isWarning
+                        ? ModatexColors.warning
+                        : ModatexColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: ModatexColors.accent,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -245,75 +326,49 @@ class _StatCard extends StatelessWidget {
 class _QuickActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final Color color;
   final VoidCallback onTap;
 
   const _QuickActionButton({
     Key? key,
     required this.label,
     required this.icon,
-    required this.color,
     required this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 40),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: ModatexColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: ModatexColors.divider),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: ModatexColors.primary,
+                borderRadius: BorderRadius.circular(16),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryCard extends StatelessWidget {
-  final String category;
-  final int count;
-
-  const _CategoryCard({
-    Key? key,
-    required this.category,
-    required this.count,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xFF9333EA).withOpacity(0.1),
-          child: const Icon(Icons.category, color: Color(0xFF9333EA)),
-        ),
-        title: Text(
-          category,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        trailing: Chip(
-          label: Text(
-            '$count',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: const Color(0xFF9333EA),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: ModatexColors.textPrimary,
+                height: 1.3,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -330,55 +385,89 @@ class _LowStockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            product.mainImage,
-            width: 50,
-            height: 50,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
+    final isOutOfStock = product.totalStock == 0;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, '/product-detail', arguments: product.id);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: ModatexColors.surface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                product.mainImage,
                 width: 50,
                 height: 50,
-                color: Colors.grey[300],
-                child: const Icon(Icons.image, color: Colors.grey),
-              );
-            },
-          ),
-        ),
-        title: Text(
-          product.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text('Stock: ${product.totalStock}'),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.orange[100],
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.warning_amber, size: 16, color: Colors.orange),
-              const SizedBox(width: 4),
-              const Text(
-                'Low',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 50,
+                    height: 50,
+                    color: ModatexColors.background,
+                    child: Icon(
+                      Icons.image_outlined,
+                      color: ModatexColors.accent,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: ModatexColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Stock: ${product.totalStock} m',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: ModatexColors.accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isOutOfStock
+                    ? ModatexColors.error.withOpacity(0.1)
+                    : ModatexColors.warning.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                isOutOfStock ? 'ÉPUISÉ' : 'BAS',
                 style: TextStyle(
-                  color: Colors.orange,
-                  fontWeight: FontWeight.bold,
+                  color: isOutOfStock
+                      ? ModatexColors.error
+                      : ModatexColors.warning,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        onTap: () {
-          Navigator.pushNamed(context, '/product-detail', arguments: product.id);
-        },
       ),
     );
   }

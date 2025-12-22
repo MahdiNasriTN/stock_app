@@ -23,13 +23,16 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      print('📱 ProductProvider: Starting fetchProducts...');
       _products = await _apiService.getProducts(
         category: category,
         search: search,
       );
+      print('📱 ProductProvider: Got ${_products.length} products');
       _loading = false;
       notifyListeners();
     } catch (e) {
+      print('📱 ProductProvider: ERROR - $e');
       _error = e.toString();
       _loading = false;
       notifyListeners();
@@ -78,21 +81,9 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> updateStock({
-    required String productId,
-    required String variantId,
-    required String operation,
-    required int quantity,
-    String? reason,
-  }) async {
+  Future<bool> updateProduct(String productId, Map<String, dynamic> productData) async {
     try {
-      await _apiService.updateStock(
-        productId: productId,
-        variantId: variantId,
-        operation: operation,
-        quantity: quantity,
-        reason: reason,
-      );
+      await _apiService.updateProduct(productId, productData);
       await fetchProducts();
       return true;
     } catch (e) {
@@ -102,7 +93,22 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> addVariant(String productId, Map<String, dynamic> variantData) async {
+  Future<bool> deleteProduct(String productId) async {
+    try {
+      await _apiService.deleteProduct(productId);
+      await fetchProducts();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> addVariant(
+    String productId,
+    Map<String, dynamic> variantData,
+  ) async {
     try {
       await _apiService.addVariant(productId, variantData);
       await fetchProducts();
@@ -117,6 +123,73 @@ class ProductProvider with ChangeNotifier {
   Future<bool> deleteVariant(String productId, String variantId) async {
     try {
       await _apiService.deleteVariant(productId, variantId);
+      await fetchProducts();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Roll management methods
+  Future<bool> addRoll({
+    required String productId,
+    required String variantId,
+    required String location,
+    required double length,
+  }) async {
+    try {
+      await _apiService.addRoll(
+        productId: productId,
+        variantId: variantId,
+        location: location,
+        length: length,
+      );
+      await fetchProducts();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateRoll({
+    required String productId,
+    required String variantId,
+    required String rollId,
+    String? location,
+    double? length,
+  }) async {
+    try {
+      await _apiService.updateRoll(
+        productId: productId,
+        variantId: variantId,
+        rollId: rollId,
+        location: location,
+        length: length,
+      );
+      await fetchProducts();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteRoll({
+    required String productId,
+    required String variantId,
+    required String rollId,
+  }) async {
+    try {
+      await _apiService.deleteRoll(
+        productId: productId,
+        variantId: variantId,
+        rollId: rollId,
+      );
       await fetchProducts();
       return true;
     } catch (e) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
+import '../main.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class StockScreen extends StatefulWidget {
 class _StockScreenState extends State<StockScreen> {
   String _filterType = 'all'; // all, low, out
   String? _selectedCategory;
+  Set<String> _expandedProducts = {};
 
   @override
   void initState() {
@@ -32,115 +34,74 @@ class _StockScreenState extends State<StockScreen> {
 
   List<Product> _getFilteredProducts(List<Product> products) {
     var filtered = products;
-    
-    // Filter by category
-    if (_selectedCategory != null) {
-      filtered = filtered.where((p) => p.category == _selectedCategory).toList();
-    }
-    
+
+
     // Filter by stock level
     if (_filterType == 'low') {
-      filtered = filtered.where((p) => p.totalStock > 0 && p.totalStock <= p.lowStockThreshold).toList();
+      filtered = filtered
+          .where((p) => p.totalStock > 0 && p.totalStock <= p.lowStockThreshold)
+          .toList();
     } else if (_filterType == 'out') {
       filtered = filtered.where((p) => p.totalStock == 0).toList();
     }
-    
+
     return filtered;
   }
 
-  void _showQuickUpdateDialog(Product product, Variant variant) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Quick Update: ${variant.name}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Current Stock: ${variant.stockQuantity}'),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await _updateStock(product.id, variant.id, 'add', 10);
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('+10'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    if (variant.stockQuantity >= 10) {
-                      await _updateStock(product.id, variant.id, 'remove', 10);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Insufficient stock')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.remove),
-                  label: const Text('-10'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showCustomUpdateDialog(product, variant);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
-            child: const Text('Custom'),
-          ),
-        ],
-      ),
-    );
+  void _toggleProductExpansion(String productId) {
+    setState(() {
+      if (_expandedProducts.contains(productId)) {
+        _expandedProducts.remove(productId);
+      } else {
+        _expandedProducts.add(productId);
+      }
+    });
   }
 
-  void _showCustomUpdateDialog(Product product, Variant variant) {
-    final quantityController = TextEditingController();
-    String operation = 'add';
+  void _showAddRollDialog(Product product, Variant variant) {
+    final lengthController = TextEditingController();
+    String location = 'warehouse';
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('Custom Update: ${variant.name}'),
+          backgroundColor: ModatexColors.surface,
+          title: Text(
+            'Ajouter un rouleau',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                variant.colorName,
+                style: TextStyle(
+                  color: ModatexColors.accent,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: operation,
+                value: location,
                 decoration: const InputDecoration(
-                  labelText: 'Operation',
-                  border: OutlineInputBorder(),
+                  labelText: 'Emplacement',
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'add', child: Text('Add Stock')),
-                  DropdownMenuItem(value: 'remove', child: Text('Remove Stock')),
-                  DropdownMenuItem(value: 'set', child: Text('Set Stock')),
+                  DropdownMenuItem(value: 'warehouse', child: Text('Entrepôt')),
+                  DropdownMenuItem(value: 'magasin', child: Text('Magasin')),
                 ],
                 onChanged: (value) {
-                  setState(() => operation = value!);
+                  setState(() => location = value!);
                 },
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: quantityController,
+                controller: lengthController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Quantity',
-                  border: OutlineInputBorder(),
+                  labelText: 'Longueur (mètres)',
                 ),
               ),
             ],
@@ -148,22 +109,51 @@ class _StockScreenState extends State<StockScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(
+                'Annuler',
+                style: TextStyle(color: ModatexColors.accent),
+              ),
             ),
             ElevatedButton(
               onPressed: () async {
-                final quantity = int.tryParse(quantityController.text);
-                if (quantity == null || quantity <= 0) {
+                final length = double.tryParse(lengthController.text);
+                if (length == null || length <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a valid quantity')),
+                    SnackBar(
+                      content: const Text('Veuillez entrer une longueur valide'),
+                      backgroundColor: ModatexColors.error,
+                    ),
                   );
                   return;
                 }
+
                 Navigator.pop(context);
-                await _updateStock(product.id, variant.id, operation, quantity);
+                final provider =
+                    Provider.of<ProductProvider>(context, listen: false);
+                final success = await provider.addRoll(
+                  productId: product.id,
+                  variantId: variant.id,
+                  location: location,
+                  length: length,
+                );
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Rouleau ajouté avec succès'),
+                      backgroundColor: ModatexColors.success,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Échec de l\'ajout du rouleau'),
+                      backgroundColor: ModatexColors.error,
+                    ),
+                  );
+                }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
-              child: const Text('Update'),
+              child: const Text('Ajouter'),
             ),
           ],
         ),
@@ -171,41 +161,69 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  Future<void> _updateStock(String productId, String variantId, String operation, int quantity) async {
-    final provider = Provider.of<ProductProvider>(context, listen: false);
-    final success = await provider.updateStock(
-      productId: productId,
-      variantId: variantId,
-      operation: operation,
-      quantity: quantity,
-      reason: 'Quick stock update',
+  Future<void> _deleteRoll(
+      Product product, Variant variant, Roll roll) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: ModatexColors.surface,
+        title: const Text(
+          'Supprimer le rouleau',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'Supprimer ce rouleau de ${roll.length}m (${roll.location == 'warehouse' ? 'Entrepôt' : 'Magasin'}) ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Annuler',
+              style: TextStyle(color: ModatexColors.accent),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ModatexColors.error,
+            ),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
     );
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stock updated successfully')),
+    if (confirm == true) {
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      final success = await provider.deleteRoll(
+        productId: product.id,
+        variantId: variant.id,
+        rollId: roll.id,
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update stock')),
-      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Rouleau supprimé'),
+            backgroundColor: ModatexColors.success,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: ModatexColors.background,
       appBar: AppBar(
-        title: const Text('Stock Management', style: TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0,
-        backgroundColor: const Color(0xFF9333EA),
+        title: const Text('Gestion du Stock'),
       ),
       body: Column(
         children: [
           // Filters
           Container(
-            color: const Color(0xFF9333EA),
+            color: ModatexColors.primary,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               children: [
@@ -214,7 +232,7 @@ class _StockScreenState extends State<StockScreen> {
                   children: [
                     Expanded(
                       child: _FilterChip(
-                        label: 'All Stock',
+                        label: 'Tout',
                         isSelected: _filterType == 'all',
                         onTap: () => setState(() => _filterType = 'all'),
                       ),
@@ -222,7 +240,7 @@ class _StockScreenState extends State<StockScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _FilterChip(
-                        label: 'Low Stock',
+                        label: 'Stock Bas',
                         isSelected: _filterType == 'low',
                         onTap: () => setState(() => _filterType = 'low'),
                       ),
@@ -230,73 +248,50 @@ class _StockScreenState extends State<StockScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _FilterChip(
-                        label: 'Out of Stock',
+                        label: 'Épuisé',
                         isSelected: _filterType == 'out',
                         onTap: () => setState(() => _filterType = 'out'),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // Category Filter
-                Consumer<ProductProvider>(
-                  builder: (context, provider, child) {
-                    return DropdownButtonFormField<String>(
-                      value: _selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: 'Filter by Category',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('All Categories'),
-                        ),
-                        ...provider.categories.map((cat) {
-                          final categoryName = (cat['_id'] ?? cat['category'] ?? '').toString();
-                          return DropdownMenuItem(
-                            value: categoryName,
-                            child: Text(categoryName),
-                          );
-                        }).toList(),
-                      ],
-                      onChanged: (value) {
-                        setState(() => _selectedCategory = value);
-                      },
-                    );
-                  },
-                ),
               ],
             ),
           ),
-          
+
           // Products List
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadData,
+              color: ModatexColors.primary,
               child: Consumer<ProductProvider>(
                 builder: (context, provider, child) {
                   if (provider.loading && provider.products.isEmpty) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: ModatexColors.primary,
+                      ),
+                    );
                   }
 
-                  final filteredProducts = _getFilteredProducts(provider.products);
+                  final filteredProducts =
+                      _getFilteredProducts(provider.products);
 
                   if (filteredProducts.isEmpty) {
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.inventory_2, size: 64, color: Colors.grey[400]),
+                          Icon(Icons.inventory_2_outlined,
+                              size: 64, color: ModatexColors.accent),
                           const SizedBox(height: 16),
                           Text(
-                            'No products found',
-                            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                            'Aucun produit trouvé',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: ModatexColors.accent,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
@@ -308,9 +303,17 @@ class _StockScreenState extends State<StockScreen> {
                     itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
                       final product = filteredProducts[index];
+                      final isExpanded =
+                          _expandedProducts.contains(product.id);
                       return _StockProductCard(
                         product: product,
-                        onQuickUpdate: (variant) => _showQuickUpdateDialog(product, variant),
+                        isExpanded: isExpanded,
+                        onToggleExpand: () =>
+                            _toggleProductExpansion(product.id),
+                        onAddRoll: (variant) =>
+                            _showAddRollDialog(product, variant),
+                        onDeleteRoll: (variant, roll) =>
+                            _deleteRoll(product, variant, roll),
                       );
                     },
                   );
@@ -338,20 +341,21 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+          color: isSelected ? Colors.white : Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: isSelected ? const Color(0xFF9333EA) : Colors.white,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? ModatexColors.primary : Colors.white,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            fontSize: 13,
           ),
         ),
       ),
@@ -361,167 +365,323 @@ class _FilterChip extends StatelessWidget {
 
 class _StockProductCard extends StatelessWidget {
   final Product product;
-  final Function(Variant) onQuickUpdate;
+  final bool isExpanded;
+  final VoidCallback onToggleExpand;
+  final Function(Variant) onAddRoll;
+  final Function(Variant, Roll) onDeleteRoll;
 
   const _StockProductCard({
     Key? key,
     required this.product,
-    required this.onQuickUpdate,
+    required this.isExpanded,
+    required this.onToggleExpand,
+    required this.onAddRoll,
+    required this.onDeleteRoll,
   }) : super(key: key);
+
+  Color _parseColor(String colorStr) {
+    try {
+      return Color(int.parse(colorStr.replaceFirst('#', '0xff')));
+    } catch (e) {
+      return Colors.grey;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isLowStock = product.totalStock <= product.lowStockThreshold;
     final isOutOfStock = product.totalStock == 0;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: ModatexColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           // Product Header
-          ListTile(
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                product.mainImage,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 60,
-                    height: 60,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image, color: Colors.grey),
-                  );
-                },
+          InkWell(
+            onTap: onToggleExpand,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      product.mainImage,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 56,
+                          height: 56,
+                          color: ModatexColors.background,
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: ModatexColors.accent,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${product.totalStock} m',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: isOutOfStock
+                              ? ModatexColors.error
+                              : (isLowStock ? ModatexColors.warning : ModatexColors.success),
+                        ),
+                      ),
+                      if (isLowStock || isOutOfStock)
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isOutOfStock
+                                ? ModatexColors.error.withOpacity(0.1)
+                                : ModatexColors.warning.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            isOutOfStock ? 'ÉPUISÉ' : 'BAS',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: isOutOfStock
+                                  ? ModatexColors.error
+                                  : ModatexColors.warning,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: ModatexColors.accent,
+                  ),
+                ],
               ),
             ),
-            title: Text(
-              product.name,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            subtitle: Text(product.category),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'Total: ${product.totalStock}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: isOutOfStock ? Colors.red : (isLowStock ? Colors.orange : Colors.green),
-                  ),
-                ),
-                if (isLowStock || isOutOfStock)
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isOutOfStock ? Colors.red[100] : Colors.orange[100],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      isOutOfStock ? 'Out' : 'Low',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isOutOfStock ? Colors.red : Colors.orange,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
           ),
-          
-          const Divider(height: 1),
-          
-          // Variants
-          if (product.variants.isNotEmpty)
+
+          // Expanded Variants Section
+          if (isExpanded) ...[
+            Container(
+              height: 1,
+              color: ModatexColors.divider,
+            ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Variants:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  Text(
+                    'COULEURS & ROULEAUX',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      color: ModatexColors.accent,
+                      letterSpacing: 1,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   ...product.variants.map((variant) {
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: Colors.grey[50],
+                        color: ModatexColors.background,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[200]!),
                       ),
-                      child: Row(
+                      child: Column(
                         children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: Color(
-                                int.parse(variant.color.replaceFirst('#', '0xff')),
-                              ),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.grey[300]!),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          // Variant Header
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
                               children: [
-                                Text(
-                                  variant.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: _parseColor(variant.color),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border:
+                                        Border.all(color: ModatexColors.divider),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        variant.colorName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: ModatexColors.textPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Réf: ${variant.reference}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: ModatexColors.accent,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 Text(
-                                  variant.colorName,
+                                  '${variant.totalStock} m',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    color: variant.totalStock == 0
+                                        ? ModatexColors.error
+                                        : ModatexColors.success,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => onAddRoll(variant),
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: ModatexColors.primary,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.add,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          Text(
-                            '${variant.stockQuantity}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: variant.stockQuantity == 0 
-                                  ? Colors.red 
-                                  : (variant.stockQuantity <= 5 ? Colors.orange : Colors.green),
+
+                          // Rolls List
+                          if (variant.rolls.isNotEmpty)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: ModatexColors.surface,
+                                borderRadius: const BorderRadius.vertical(
+                                    bottom: Radius.circular(8)),
+                              ),
+                              child: Column(
+                                children: variant.rolls.map((roll) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        top: BorderSide(
+                                            color: ModatexColors.divider),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const SizedBox(width: 44),
+                                        Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            color: roll.location == 'warehouse'
+                                                ? Colors.blue.withOpacity(0.1)
+                                                : Colors.green.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Icon(
+                                            roll.location == 'warehouse'
+                                                ? Icons.warehouse_outlined
+                                                : Icons.store_outlined,
+                                            size: 14,
+                                            color: roll.location == 'warehouse'
+                                                ? Colors.blue
+                                                : Colors.green,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          roll.location == 'warehouse'
+                                              ? 'Entrepôt'
+                                              : 'Magasin',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: ModatexColors.textPrimary,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          '${roll.length} m',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: ModatexColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () =>
+                                              onDeleteRoll(variant, roll),
+                                          child: Icon(
+                                            Icons.delete_outline,
+                                            size: 18,
+                                            color: ModatexColors.error,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () => onQuickUpdate(variant),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF9333EA),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              minimumSize: Size.zero,
+
+                          if (variant.rolls.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                'Aucun rouleau',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: ModatexColors.accent,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
                             ),
-                            child: const Text('Update', style: TextStyle(fontSize: 12)),
-                          ),
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
+          ],
         ],
       ),
     );

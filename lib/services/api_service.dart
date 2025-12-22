@@ -3,8 +3,13 @@ import 'package:http/http.dart' as http;
 import '../models/product.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://api.ecommercetn.me/api/v1';
-
+  static bool isDevelopment = false;
+  // PHYSICAL DEVICE: Use your computer's WiFi IP
+  // Make sure your phone is connected to the SAME WiFi network as your computer
+  // If using Ethernet, try 192.168.0.146 instead
+  static String baseUrl = isDevelopment
+      ? 'http://192.168.0.146:5000/api/v1'
+      : 'http://api.ecommercetn.me/api/v1';
   // Get all products
   Future<List<Product>> getProducts({String? category, String? search}) async {
     try {
@@ -20,7 +25,19 @@ class ApiService {
         uri = uri.replace(queryParameters: queryParams);
       }
 
-      final response = await http.get(uri);
+      print('🔵 Making HTTP GET request to: $uri');
+      final response = await http
+          .get(uri)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('❌ Request TIMEOUT after 10 seconds');
+              throw Exception(
+                'Connection timeout - check if backend is running',
+              );
+            },
+          );
+
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -41,9 +58,10 @@ class ApiService {
             .toList();
         return products;
       } else {
-        throw Exception('Failed to load products');
+        throw Exception('Failed to load products: ${response.statusCode}');
       }
     } catch (e) {
+
       throw Exception('Error fetching products: $e');
     }
   }
@@ -83,7 +101,9 @@ class ApiService {
   // Get categories
   Future<List<Map<String, dynamic>>> getCategories() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/products/categories'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/products/categories'),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -116,35 +136,46 @@ class ApiService {
     }
   }
 
-  // Update stock
-  Future<void> updateStock({
-    required String productId,
-    required String variantId,
-    required String operation,
-    required int quantity,
-    String? reason,
-  }) async {
+  // Update product
+  Future<Product> updateProduct(String productId, Map<String, dynamic> productData) async {
     try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/products/$productId/variants/$variantId/stock'),
+      final response = await http.put(
+        Uri.parse('$baseUrl/products/$productId'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'operation': operation,
-          'quantity': quantity,
-          'reason': reason,
-        }),
+        body: json.encode(productData),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return Product.fromJson(data['data']);
+      } else {
+        throw Exception('Failed to update product');
+      }
+    } catch (e) {
+      throw Exception('Error updating product: $e');
+    }
+  }
+
+  // Delete product
+  Future<void> deleteProduct(String productId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/products/$productId'),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to update stock');
+        throw Exception('Failed to delete product');
       }
     } catch (e) {
-      throw Exception('Error updating stock: $e');
+      throw Exception('Error deleting product: $e');
     }
   }
 
   // Add variant
-  Future<void> addVariant(String productId, Map<String, dynamic> variantData) async {
+  Future<void> addVariant(
+    String productId,
+    Map<String, dynamic> variantData,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/products/$productId/variants'),
@@ -172,6 +203,78 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error deleting variant: $e');
+    }
+  }
+
+  // Add roll to variant
+  Future<void> addRoll({
+    required String productId,
+    required String variantId,
+    required String location,
+    required double length,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/products/$productId/variants/$variantId/rolls'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'location': location, 'length': length}),
+      );
+
+      if (response.statusCode != 201) {
+        throw Exception('Failed to add roll');
+      }
+    } catch (e) {
+      throw Exception('Error adding roll: $e');
+    }
+  }
+
+  // Update roll
+  Future<void> updateRoll({
+    required String productId,
+    required String variantId,
+    required String rollId,
+    String? location,
+    double? length,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (location != null) body['location'] = location;
+      if (length != null) body['length'] = length;
+
+      final response = await http.put(
+        Uri.parse(
+          '$baseUrl/products/$productId/variants/$variantId/rolls/$rollId',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update roll');
+      }
+    } catch (e) {
+      throw Exception('Error updating roll: $e');
+    }
+  }
+
+  // Delete roll
+  Future<void> deleteRoll({
+    required String productId,
+    required String variantId,
+    required String rollId,
+  }) async {
+    try {
+      final response = await http.delete(
+        Uri.parse(
+          '$baseUrl/products/$productId/variants/$variantId/rolls/$rollId',
+        ),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete roll');
+      }
+    } catch (e) {
+      throw Exception('Error deleting roll: $e');
     }
   }
 }

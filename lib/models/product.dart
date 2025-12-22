@@ -1,13 +1,7 @@
 class Product {
   final String id;
   final String name;
-  final String description;
-  final String category;
-  final String material;
-  final double width;
   final String mainImage;
-  final List<String> tags;
-  final bool isFeatured;
   final int lowStockThreshold;
   final List<Variant> variants;
   final int totalStock;
@@ -17,13 +11,7 @@ class Product {
   Product({
     required this.id,
     required this.name,
-    required this.description,
-    required this.category,
-    required this.material,
-    required this.width,
     required this.mainImage,
-    required this.tags,
-    required this.isFeatured,
     required this.lowStockThreshold,
     required this.variants,
     required this.totalStock,
@@ -35,13 +23,7 @@ class Product {
     return Product(
       id: (json['_id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
-      description: (json['description'] ?? '').toString(),
-      category: (json['category'] ?? '').toString(),
-      material: (json['material'] ?? '').toString(),
-      width: _parseDouble(json['width']),
       mainImage: (json['mainImage'] ?? '').toString(),
-      tags: _parseList(json['tags']),
-      isFeatured: json['isFeatured'] == true,
       lowStockThreshold: _parseInt(json['lowStockThreshold'], defaultValue: 10),
       variants: _parseVariants(json['variants']),
       totalStock: _parseInt(json['totalStock'], defaultValue: 0),
@@ -50,26 +32,12 @@ class Product {
     );
   }
   
-  static double _parseDouble(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
-    return 0.0;
-  }
-  
   static int _parseInt(dynamic value, {int defaultValue = 0}) {
     if (value == null) return defaultValue;
     if (value is int) return value;
     if (value is double) return value.toInt();
     if (value is String) return int.tryParse(value) ?? defaultValue;
     return defaultValue;
-  }
-  
-  static List<String> _parseList(dynamic value) {
-    if (value == null) return [];
-    if (value is List) return value.map((e) => e.toString()).toList();
-    return [];
   }
   
   static List<Variant> _parseVariants(dynamic value) {
@@ -103,58 +71,111 @@ class Product {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'description': description,
-      'category': category,
-      'material': material,
-      'width': width,
       'mainImage': mainImage,
-      'tags': tags,
-      'isFeatured': isFeatured,
       'lowStockThreshold': lowStockThreshold,
       'variants': variants.map((v) => v.toJson()).toList(),
     };
   }
 }
 
+// Roll class for each variant
+class Roll {
+  final String id;
+  final String location; // 'warehouse' or 'magasin'
+  final double length; // in meters
+
+  Roll({
+    required this.id,
+    required this.location,
+    required this.length,
+  });
+
+  factory Roll.fromJson(Map<String, dynamic> json) {
+    return Roll(
+      id: (json['_id'] ?? '').toString(),
+      location: (json['location'] ?? 'warehouse').toString(),
+      length: _parseDouble(json['length']),
+    );
+  }
+  
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'location': location,
+      'length': length,
+    };
+  }
+}
+
 class Variant {
   final String id;
-  final String name;
   final String colorName;
   final String color;
-  final int stockQuantity;
+  final String reference;
+  final String? image;
+  final List<Roll> rolls;
+  final double totalStock;
 
   Variant({
     required this.id,
-    required this.name,
     required this.colorName,
     required this.color,
-    required this.stockQuantity,
+    required this.reference,
+    this.image,
+    required this.rolls,
+    required this.totalStock,
   });
 
   factory Variant.fromJson(Map<String, dynamic> json) {
     return Variant(
       id: (json['_id'] ?? '').toString(),
-      name: (json['name'] ?? '').toString(),
       colorName: (json['colorName'] ?? '').toString(),
       color: (json['color'] ?? '#9333ea').toString(),
-      stockQuantity: _parseIntVariant(json['stockQuantity']),
+      reference: (json['reference'] ?? '').toString(),
+      image: json['image']?.toString(),
+      rolls: _parseRolls(json['rolls']),
+      totalStock: _parseDouble(json['totalStock']),
     );
   }
   
-  static int _parseIntVariant(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+  
+  static List<Roll> _parseRolls(dynamic value) {
+    if (value == null) return [];
+    if (value is! List) return [];
+    return value
+        .map((r) {
+          try {
+            return Roll.fromJson(r as Map<String, dynamic>);
+          } catch (e) {
+            print('Error parsing roll: $e');
+            return null;
+          }
+        })
+        .whereType<Roll>()
+        .toList();
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'name': name,
       'colorName': colorName,
       'color': color,
-      'stockQuantity': stockQuantity,
+      'reference': reference,
+      'image': image,
+      'rolls': rolls.map((r) => r.toJson()).toList(),
     };
   }
 }

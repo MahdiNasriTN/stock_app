@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -10,260 +11,244 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _lowStockAlerts = true;
-  bool _darkMode = false;
   String _apiEndpoint = 'http://localhost:5000/api';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: ModatexColors.background,
       appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0,
-        backgroundColor: const Color(0xFF9333EA),
+        title: const Text('Réglages'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         children: [
           // Profile Section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: const Color(0xFF9333EA),
-                    child: const Icon(Icons.person, size: 40, color: Colors.white),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Admin User',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'admin@stockmanager.com',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Edit profile feature coming soon')),
-                      );
-                    },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Edit Profile'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9333EA),
-                    ),
-                  ),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: ModatexColors.surface,
+              borderRadius: BorderRadius.circular(12),
             ),
-          ),
-          const SizedBox(height: 24),
-          
-          // Notifications Section
-          const Text(
-            'Notifications',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
             child: Column(
               children: [
-                SwitchListTile(
-                  title: const Text('Enable Notifications'),
-                  subtitle: const Text('Receive app notifications'),
-                  value: _notificationsEnabled,
-                  activeColor: const Color(0xFF9333EA),
-                  onChanged: (value) {
-                    setState(() => _notificationsEnabled = value);
-                  },
-                  secondary: const Icon(Icons.notifications),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: ModatexColors.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'M',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w300,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: const Text('Low Stock Alerts'),
-                  subtitle: const Text('Get notified when stock is low'),
-                  value: _lowStockAlerts,
-                  activeColor: const Color(0xFF9333EA),
-                  onChanged: (value) {
-                    setState(() => _lowStockAlerts = value);
+                const SizedBox(height: 16),
+                const Text(
+                  'Administrateur',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: ModatexColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'admin@modatex.com',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: ModatexColors.accent,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Fonctionnalité à venir'),
+                        backgroundColor: ModatexColors.primary,
+                      ),
+                    );
                   },
-                  secondary: const Icon(Icons.warning_amber),
+                  child: const Text('Modifier le profil'),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
           
-          // Appearance Section
-          const Text(
-            'Appearance',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          // Notifications Section
+          _buildSectionTitle('Notifications'),
           const SizedBox(height: 12),
-          Card(
-            child: SwitchListTile(
-              title: const Text('Dark Mode'),
-              subtitle: const Text('Enable dark theme'),
-              value: _darkMode,
-              activeColor: const Color(0xFF9333EA),
-              onChanged: (value) {
-                setState(() => _darkMode = value);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Dark mode feature coming soon')),
-                );
-              },
-              secondary: const Icon(Icons.dark_mode),
+          Container(
+            decoration: BoxDecoration(
+              color: ModatexColors.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                _buildSwitchTile(
+                  icon: Icons.notifications_outlined,
+                  title: 'Activer les notifications',
+                  subtitle: 'Recevoir les notifications de l\'app',
+                  value: _notificationsEnabled,
+                  onChanged: (value) {
+                    setState(() => _notificationsEnabled = value);
+                  },
+                ),
+                Divider(height: 1, color: ModatexColors.divider),
+                _buildSwitchTile(
+                  icon: Icons.warning_amber_outlined,
+                  title: 'Alertes stock bas',
+                  subtitle: 'Être notifié quand le stock est faible',
+                  value: _lowStockAlerts,
+                  onChanged: (value) {
+                    setState(() => _lowStockAlerts = value);
+                  },
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
           
           // API Configuration Section
-          const Text(
-            'API Configuration',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          _buildSectionTitle('Configuration API'),
           const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'API Endpoint',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ModatexColors.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Point d\'accès API',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: ModatexColors.accent,
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: TextEditingController(text: _apiEndpoint),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.cloud),
-                      hintText: 'http://localhost:5000/api',
-                    ),
-                    onChanged: (value) {
-                      setState(() => _apiEndpoint = value);
-                    },
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: TextEditingController(text: _apiEndpoint),
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.cloud_outlined, color: ModatexColors.accent),
+                    hintText: 'http://localhost:5000/api',
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Connection Status',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                  onChanged: (value) {
+                    setState(() => _apiEndpoint = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'État de connexion',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: ModatexColors.accent,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green[100],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.check_circle, size: 16, color: Colors.green),
-                            SizedBox(width: 4),
-                            Text(
-                              'Connected',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.green,
-                                fontWeight: FontWeight.bold,
-                              ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: ModatexColors.success.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle, size: 14, color: ModatexColors.success),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Connecté',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: ModatexColors.success,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
           
           // Storage Section
-          const Text(
-            'Storage',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          _buildSectionTitle('Stockage'),
           const SizedBox(height: 12),
-          Card(
+          Container(
+            decoration: BoxDecoration(
+              color: ModatexColors.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.cached),
-                  title: const Text('Clear Cache'),
-                  subtitle: const Text('Free up storage space'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                _buildListTile(
+                  icon: Icons.cached_outlined,
+                  title: 'Vider le cache',
+                  subtitle: 'Libérer de l\'espace',
                   onTap: () {
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('Clear Cache'),
-                        content: const Text('Are you sure you want to clear the cache?'),
+                        backgroundColor: ModatexColors.surface,
+                        title: const Text(
+                          'Vider le cache',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        content: const Text('Voulez-vous vraiment vider le cache ?'),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
+                            child: Text(
+                              'Annuler',
+                              style: TextStyle(color: ModatexColors.accent),
+                            ),
                           ),
                           ElevatedButton(
                             onPressed: () {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Cache cleared successfully')),
+                                SnackBar(
+                                  content: const Text('Cache vidé avec succès'),
+                                  backgroundColor: ModatexColors.success,
+                                ),
                               );
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF9333EA),
-                            ),
-                            child: const Text('Clear'),
+                            child: const Text('Confirmer'),
                           ),
                         ],
                       ),
                     );
                   },
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.download),
-                  title: const Text('Export Data'),
-                  subtitle: const Text('Download all data as CSV'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                Divider(height: 1, color: ModatexColors.divider),
+                _buildListTile(
+                  icon: Icons.download_outlined,
+                  title: 'Exporter les données',
+                  subtitle: 'Télécharger en CSV',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Export feature coming soon')),
+                      SnackBar(
+                        content: const Text('Fonctionnalité à venir'),
+                        backgroundColor: ModatexColors.primary,
+                      ),
                     );
                   },
                 ),
@@ -273,60 +258,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           
           // About Section
-          const Text(
-            'About',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          _buildSectionTitle('À propos'),
           const SizedBox(height: 12),
-          Card(
+          Container(
+            decoration: BoxDecoration(
+              color: ModatexColors.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.info),
-                  title: const Text('App Version'),
-                  subtitle: const Text('1.0.0'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                _buildListTile(
+                  icon: Icons.info_outline,
+                  title: 'Version de l\'app',
+                  subtitle: '1.0.0',
                   onTap: () {
                     showAboutDialog(
                       context: context,
-                      applicationName: 'Stock Manager',
+                      applicationName: 'Modatex',
                       applicationVersion: '1.0.0',
                       applicationIcon: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF9333EA),
+                          color: ModatexColors.primary,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.inventory, color: Colors.white, size: 32),
+                        child: const Text(
+                          'M',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w300,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                       children: const [
-                        Text('A comprehensive stock management solution for your business.'),
+                        Text('Une solution complète de gestion de stock pour votre entreprise.'),
                       ],
                     );
                   },
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.privacy_tip),
-                  title: const Text('Privacy Policy'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                Divider(height: 1, color: ModatexColors.divider),
+                _buildListTile(
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'Politique de confidentialité',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Privacy policy coming soon')),
+                      SnackBar(
+                        content: const Text('Fonctionnalité à venir'),
+                        backgroundColor: ModatexColors.primary,
+                      ),
                     );
                   },
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.description),
-                  title: const Text('Terms of Service'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                Divider(height: 1, color: ModatexColors.divider),
+                _buildListTile(
+                  icon: Icons.description_outlined,
+                  title: 'Conditions d\'utilisation',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Terms of service coming soon')),
+                      SnackBar(
+                        content: const Text('Fonctionnalité à venir'),
+                        backgroundColor: ModatexColors.primary,
+                      ),
                     );
                   },
                 ),
@@ -336,49 +329,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           
           // Danger Zone
-          const Text(
-            'Danger Zone',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.red,
-            ),
-          ),
+          _buildSectionTitle('Zone de danger', isError: true),
           const SizedBox(height: 12),
-          Card(
-            color: Colors.red[50],
+          Container(
+            decoration: BoxDecoration(
+              color: ModatexColors.error.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: ModatexColors.error.withOpacity(0.2)),
+            ),
             child: ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'Logout',
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: Icon(Icons.logout, color: ModatexColors.error),
+              title: Text(
+                'Déconnexion',
                 style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+                  color: ModatexColors.error,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.red),
+              trailing: Icon(Icons.arrow_forward_ios, size: 16, color: ModatexColors.error),
               onTap: () {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('Logout'),
-                    content: const Text('Are you sure you want to logout?'),
+                    backgroundColor: ModatexColors.surface,
+                    title: const Text(
+                      'Déconnexion',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    content: const Text('Voulez-vous vraiment vous déconnecter ?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: Text(
+                          'Annuler',
+                          style: TextStyle(color: ModatexColors.accent),
+                        ),
                       ),
                       ElevatedButton(
                         onPressed: () {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Logged out successfully')),
+                            SnackBar(
+                              content: const Text('Déconnecté avec succès'),
+                              backgroundColor: ModatexColors.success,
+                            ),
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: ModatexColors.error,
                         ),
-                        child: const Text('Logout'),
+                        child: const Text('Déconnecter'),
                       ),
                     ],
                   ),
@@ -386,9 +387,101 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, {bool isError = false}) {
+    return Text(
+      title.toUpperCase(),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: isError ? ModatexColors.error : ModatexColors.accent,
+        letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: ModatexColors.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: ModatexColors.primary, size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 15,
+          color: ModatexColors.textPrimary,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: ModatexColors.accent,
+        ),
+      ),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: ModatexColors.primary,
+      ),
+    );
+  }
+
+  Widget _buildListTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: ModatexColors.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: ModatexColors.primary, size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 15,
+          color: ModatexColors.textPrimary,
+        ),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: ModatexColors.accent,
+              ),
+            )
+          : null,
+      trailing: Icon(Icons.arrow_forward_ios, size: 16, color: ModatexColors.accent),
+      onTap: onTap,
     );
   }
 }
