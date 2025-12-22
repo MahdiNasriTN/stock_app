@@ -3,13 +3,24 @@ import 'package:http/http.dart' as http;
 import '../models/product.dart';
 
 class ApiService {
+  // Set to false for production builds
   static bool isDevelopment = false;
+  
   // PHYSICAL DEVICE: Use your computer's WiFi IP
   // Make sure your phone is connected to the SAME WiFi network as your computer
   // If using Ethernet, try 192.168.0.146 instead
   static String baseUrl = isDevelopment
       ? 'http://192.168.0.146:5000/api/v1'
       : 'http://api.ecommercetn.me/api/v1';
+
+  // Common headers to prevent caching
+  static Map<String, String> get _headers => {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  };
+
   // Get all products
   Future<List<Product>> getProducts({String? category, String? search}) async {
     try {
@@ -21,13 +32,13 @@ class ApiService {
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
-      if (queryParams.isNotEmpty) {
-        uri = uri.replace(queryParameters: queryParams);
-      }
+      // Add timestamp to bust cache
+      queryParams['_t'] = DateTime.now().millisecondsSinceEpoch.toString();
+      uri = uri.replace(queryParameters: queryParams);
 
       print('🔵 Making HTTP GET request to: $uri');
       final response = await http
-          .get(uri)
+          .get(uri, headers: _headers)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -69,7 +80,8 @@ class ApiService {
   // Get product by ID
   Future<Product> getProductById(String id) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/products/$id'));
+      final uri = Uri.parse('$baseUrl/products/$id?_t=${DateTime.now().millisecondsSinceEpoch}');
+      final response = await http.get(uri, headers: _headers);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -85,7 +97,8 @@ class ApiService {
   // Get stats
   Future<Stats> getStats() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/stats/dashboard'));
+      final uri = Uri.parse('$baseUrl/stats/dashboard?_t=${DateTime.now().millisecondsSinceEpoch}');
+      final response = await http.get(uri, headers: _headers);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -101,9 +114,8 @@ class ApiService {
   // Get categories
   Future<List<Map<String, dynamic>>> getCategories() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/products/categories'),
-      );
+      final uri = Uri.parse('$baseUrl/products/categories?_t=${DateTime.now().millisecondsSinceEpoch}');
+      final response = await http.get(uri, headers: _headers);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

@@ -56,15 +56,15 @@ flutter:
   
   # App Icon Configuration
   assets:
-    - assets/icon/app_icon.png
+    - assets/icon/modatex.jpg
 
 # Flutter Launcher Icons Configuration
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/icon/app_icon.png"
-  adaptive_icon_background: "#E8E5DF"
-  adaptive_icon_foreground: "assets/icon/app_icon.png"
+  image_path: "assets/icon/modatex.jpg"
+  adaptive_icon_background: "#1A1A1A"
+  adaptive_icon_foreground: "assets/icon/modatex.jpg"
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
