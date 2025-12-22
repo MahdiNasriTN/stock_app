@@ -50,6 +50,15 @@ jobs:
           path: project_app/build/app/outputs/bundle/release/app-release.aab
       
       - name: Deploy APK to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            rm -rf /var/www/mobile_apps/*
+      
+      - name: Upload APK to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -59,7 +68,7 @@ jobs:
           target: "/var/www/mobile_apps/"
           strip_components: 5
       
-      - name: Rename APK with timestamp
+      - name: Rename APK to modatex.apk
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -67,7 +76,4 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd /var/www/mobile_apps
-            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-            mv app-release.apk modatex-android-${TIMESTAMP}.apk
-            rm -f modatex-android-latest.apk
-            ln -s modatex-android-${TIMESTAMP}.apk modatex-android-latest.apk
+            mv app-release.apk modatex.apk
