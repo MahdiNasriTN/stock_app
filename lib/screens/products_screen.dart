@@ -14,13 +14,25 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      if (!provider.loadingMore && provider.hasMore) {
+        provider.loadMoreProducts();
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -109,6 +121,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   }
 
                   return GridView.builder(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(16),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
@@ -116,8 +129,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                     ),
-                    itemCount: provider.products.length,
+                    itemCount: provider.products.length + (provider.hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index == provider.products.length) {
+                        // Loading indicator at the bottom
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(
+                              color: ModatexColors.primary,
+                            ),
+                          ),
+                        );
+                      }
                       final product = provider.products[index];
                       return _ProductCard(product: product);
                     },
@@ -134,6 +158,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 }

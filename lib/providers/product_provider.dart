@@ -10,32 +10,81 @@ class ProductProvider with ChangeNotifier {
   Stats? _stats;
   List<Map<String, dynamic>> _categories = [];
   bool _loading = false;
+  bool _loadingMore = false;
   String? _error;
+  
+  // Pagination
+  int _currentPage = 1;
+  int _totalPages = 1;
+  bool _hasMore = true;
+  String? _currentSearch;
+  String? _currentCategory;
 
   List<Product> get products => _products;
   Stats? get stats => _stats;
   List<Map<String, dynamic>> get categories => _categories;
   bool get loading => _loading;
+  bool get loadingMore => _loadingMore;
   String? get error => _error;
+  bool get hasMore => _hasMore;
 
   Future<void> fetchProducts({String? category, String? search}) async {
     _loading = true;
     _error = null;
+    _currentPage = 1;
+    _hasMore = true;
+    _currentSearch = search;
+    _currentCategory = category;
     notifyListeners();
 
     try {
-      print('📱 ProductProvider: Starting fetchProducts...');
-      _products = await _apiService.getProducts(
+      print('📱 ProductProvider: Starting fetchProducts (page 1)...');
+      final result = await _apiService.getProducts(
         category: category,
         search: search,
+        page: 1,
       );
-      print('📱 ProductProvider: Got ${_products.length} products');
+      _products = result['products'];
+      _currentPage = result['page'];
+      _totalPages = result['pages'];
+      _hasMore = _currentPage < _totalPages;
+      print('📱 ProductProvider: Got ${_products.length} products (page $_currentPage/$_totalPages)');
       _loading = false;
       notifyListeners();
     } catch (e) {
       print('📱 ProductProvider: ERROR - $e');
       _error = e.toString();
       _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMoreProducts() async {
+    if (_loadingMore || !_hasMore) return;
+
+    _loadingMore = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final nextPage = _currentPage + 1;
+      print('📱 ProductProvider: Loading more products (page $nextPage)...');
+      final result = await _apiService.getProducts(
+        category: _currentCategory,
+        search: _currentSearch,
+        page: nextPage,
+      );
+      _products.addAll(result['products']);
+      _currentPage = result['page'];
+      _totalPages = result['pages'];
+      _hasMore = _currentPage < _totalPages;
+      print('📱 ProductProvider: Loaded ${result['products'].length} more products (page $_currentPage/$_totalPages)');
+      _loadingMore = false;
+      notifyListeners();
+    } catch (e) {
+      print('📱 ProductProvider: ERROR loading more - $e');
+      _error = e.toString();
+      _loadingMore = false;
       notifyListeners();
     }
   }

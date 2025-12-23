@@ -23,11 +23,19 @@ class ApiService {
     'Expires': '0',
   };
 
-  // Get all products
-  Future<List<Product>> getProducts({String? category, String? search}) async {
+  // Get all products with pagination
+  Future<Map<String, dynamic>> getProducts({
+    String? category,
+    String? search,
+    int page = 1,
+    int limit = 10,
+  }) async {
     try {
       var uri = Uri.parse('$baseUrl/products');
-      final queryParams = <String, String>{};
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
       if (category != null && category.isNotEmpty) {
         queryParams['category'] = category;
       }
@@ -55,7 +63,12 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['data'] == null) {
-          return [];
+          return {
+            'products': <Product>[],
+            'page': page,
+            'pages': 0,
+            'total': 0,
+          };
         }
         final products = (data['data'] as List)
             .map((p) {
@@ -69,7 +82,12 @@ class ApiService {
             })
             .whereType<Product>()
             .toList();
-        return products;
+        return {
+          'products': products,
+          'page': data['page'] ?? page,
+          'pages': data['pages'] ?? 1,
+          'total': data['total'] ?? products.length,
+        };
       } else {
         throw Exception('Failed to load products: ${response.statusCode}');
       }
