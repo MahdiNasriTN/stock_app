@@ -13,16 +13,28 @@ class StockScreen extends StatefulWidget {
 }
 
 class _StockScreenState extends State<StockScreen> {
-  String _filterType = 'all'; // all, low, out
+  String _filterType = 'all'; // all, in, out
   String? _selectedCategory;
   Set<String> _expandedProducts = {};
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      final provider = Provider.of<ProductProvider>(context, listen: false);
+      if (!provider.loadingMore && provider.hasMore) {
+        provider.loadMoreProducts();
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -38,9 +50,9 @@ class _StockScreenState extends State<StockScreen> {
 
 
     // Filter by stock level
-    if (_filterType == 'low') {
+    if (_filterType == 'in') {
       filtered = filtered
-          .where((p) => p.totalStock > 0 && p.totalStock <= p.lowStockThreshold)
+          .where((p) => p.totalStock > 0)
           .toList();
     } else if (_filterType == 'out') {
       filtered = filtered.where((p) => p.totalStock == 0).toList();
@@ -241,9 +253,9 @@ class _StockScreenState extends State<StockScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _FilterChip(
-                        label: 'Stock Bas',
-                        isSelected: _filterType == 'low',
-                        onTap: () => setState(() => _filterType = 'low'),
+                        label: 'In Stock',
+                        isSelected: _filterType == 'in',
+                        onTap: () => setState(() => _filterType = 'in'),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -300,9 +312,21 @@ class _StockScreenState extends State<StockScreen> {
                   }
 
                   return ListView.builder(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: filteredProducts.length,
+                    itemCount: filteredProducts.length + (provider.hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index == filteredProducts.length) {
+                        // Loading indicator at the bottom
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(
+                              color: ModatexColors.primary,
+                            ),
+                          ),
+                        );
+                      }
                       final product = filteredProducts[index];
                       final isExpanded =
                           _expandedProducts.contains(product.id);
@@ -326,7 +350,11 @@ class _StockScreenState extends State<StockScreen> {
       ),
     );
   }
-}
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }}
 
 class _FilterChip extends StatelessWidget {
   final String label;
@@ -437,7 +465,32 @@ class _StockProductCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: ModatexColors.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${product.variants.length} couleur${product.variants.length > 1 ? 's' : ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: ModatexColors.accent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
