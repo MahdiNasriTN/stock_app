@@ -40,9 +40,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _loadProduct() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     final provider = Provider.of<ProductProvider>(context, listen: false);
     final product = await provider.fetchProductById(widget.productId);
+    if (!mounted) return;
     setState(() {
       _product = product;
       _loading = false;
@@ -301,13 +303,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 );
 
                 if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Rouleau ajouté avec succès'),
-                      backgroundColor: ModatexColors.success,
-                    ),
-                  );
-                  _loadProduct();
+                  await _loadProduct();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Rouleau ajouté avec succès'),
+                        backgroundColor: ModatexColors.success,
+                      ),
+                    );
+                  }
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -503,13 +507,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 );
 
                 if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Couleur ajoutée avec succès'),
-                      backgroundColor: ModatexColors.success,
-                    ),
-                  );
-                  _loadProduct();
+                  await _loadProduct();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Couleur ajoutée avec succès'),
+                        backgroundColor: ModatexColors.success,
+                      ),
+                    );
+                  }
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -713,13 +719,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Couleur modifiée avec succès'),
-            backgroundColor: ModatexColors.success,
-          ),
-        );
-        _loadProduct();
+        await _loadProduct();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Couleur modifiée avec succès'),
+              backgroundColor: ModatexColors.success,
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -813,13 +821,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Rouleau modifié avec succès'),
-            backgroundColor: ModatexColors.success,
-          ),
-        );
-        _loadProduct();
+        await _loadProduct();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Rouleau modifié avec succès'),
+              backgroundColor: ModatexColors.success,
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1273,13 +1283,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               rollId: rollId,
                             );
                             if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text('Rouleau supprimé'),
-                                  backgroundColor: ModatexColors.success,
-                                ),
-                              );
-                              _loadProduct();
+                              await _loadProduct();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Rouleau supprimé'),
+                                    backgroundColor: ModatexColors.success,
+                                  ),
+                                );
+                              }
                             }
                           }
                         },
@@ -1325,13 +1337,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               variant.id,
                             );
                             if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text('Couleur supprimée'),
-                                  backgroundColor: ModatexColors.success,
-                                ),
-                              );
-                              _loadProduct();
+                              await _loadProduct();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Couleur supprimée'),
+                                    backgroundColor: ModatexColors.success,
+                                  ),
+                                );
+                              }
                             }
                           }
                         },
