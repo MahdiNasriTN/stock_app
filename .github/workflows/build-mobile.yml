@@ -1,4 +1,4 @@
-name: Build Android App
+name: Build Android App & Web
 
 on:
   push:
@@ -34,6 +34,9 @@ jobs:
       - name: Build Android AAB (for Play Store)
         run: flutter build appbundle --release
       
+      - name: Build Web
+        run: flutter build web --release --base-href /app/
+      
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
@@ -46,6 +49,12 @@ jobs:
           name: android-aab
           path: build/app/outputs/bundle/release/app-release.aab
       
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web/
+      
       - name: Deploy APK to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -54,6 +63,8 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             rm -rf /var/www/mobile_apps/*
+            rm -rf /var/www/app/*
+            mkdir -p /var/www/app
       
       - name: Upload APK to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -74,3 +85,13 @@ jobs:
           script: |
             cd /var/www/mobile_apps
             mv app-release.apk modatex.apk
+      
+      - name: Deploy Web Build to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "build/web/*"
+          target: "/var/www/app/"
+          strip_components: 2
